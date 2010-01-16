@@ -16,7 +16,7 @@ endif
 SOURCES = Makefile net-xml-generator.cl README.md \
 	xml-generator-blurb.cl xml-generator-blurb.html
 
-default: clean
+all: clean
 	rm -f build.tmp build.out
 ifeq ($(OS_NAME),windows)
 	echo '(dribble "build.out")' >> build.tmp
