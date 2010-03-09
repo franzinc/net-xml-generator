@@ -127,6 +127,19 @@
 ;;; The implementation code begins here.
 ;;;
 
+(defparameter *net-xml-generator-version* "1.0.1")
+
+;;; Change history
+;;;
+;;; *** Version 1.0.1
+;;;
+;;; with-xml-generation binds *print-level* nil to protect against aserve worker thread binding.
+;;;
+;;; Missing (read-char) in xml-at caused ^((foo @,bar "boo")) to signal read-time error.
+;;;
+;;; *** Initial 2010-01-14 release.
+
+
 (defpackage :net.xml.generator
   (:export :with-xml-generation :xml-write :emit-lxml-as-xml :*xml-readtable* :.xml-stream.
 	   :set-xml-generator-macro-chars
@@ -204,7 +217,10 @@
 
 ;; This macro returns nil.
 (defmacro with-xml-generation ((stream-var &key) &body body)
-  `(let ((stream-var ,stream-var))
+  `(let ((stream-var ,stream-var)
+	 ;; The next binding is prophylactic against aserve which limits *print-level* to prevent
+	 ;; circular log output.
+	 (*print-level* nil))
      (pprint-logical-block (stream-var nil)
        ;; This is necessary to work around a bug that ACL socket streams don't properly
        ;; support detection of column position.
@@ -275,7 +291,9 @@
   (declare (ignore char))
   (if *attribute-context*
       (let* ((evalp (eql (peek-char t stream) #\,))
-	     (name (if evalp (read stream) (read-xml-tag stream)))
+	     (name (if evalp
+		       (progn (read-char stream) (read stream))
+		     (read-xml-tag stream)))
 	     (val (read stream)))
 	`(write-xml-attribute .xml-stream. ,name ,val))
     `(xml-write ,(read stream))))
@@ -575,7 +593,7 @@ emits:
 
 ;; <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 ;;  ExternalID     ::=          'SYSTEM' S  SystemLiteral
-;;                              | 'PUBLIC' S PubidLiteral S SystemLiteral 
+;;                              | 'PUBLIC' S PubidLiteral S SystemLiteral
 
 (defun write-doctype (stream name system-literal &optional public-literal)
   ;; Note that system-literal and public-literal appear in reverse order than in the doctype statement.
