@@ -176,7 +176,7 @@
 (loop with *print-right-margin = 70
     for lf in '(:linear :mandatory :fill)
     do (with-xml-generation (*standard-output*)
-	 (let ((net.xml.generator::*xml-line-break-style* lf))
+	 (let ((net.xml.generator::*xml-line-break-style* :linear))
 	   ^(table
 	     ^((tr @bg "green") ^(th @"Name") ^(th @"Id"))
 	     ^(tr ^(td "Joe") ^(td @12345))
@@ -727,7 +727,8 @@ prints
 	(let ((body-continuation (and contents
 				      (lambda ()
 					(loop for content in contents
-					    do (cond ((stringp content)
+					    do (pprint-newline *xml-line-break-style* .xml-stream.)
+					       (cond ((stringp content)
 						      (xml-write content))
 						     ((atom content)
 						      (xml-write content))
@@ -736,9 +737,7 @@ prints
 	      (pprint-element (stringify (car tag))
 			      (lambda ()
 				(loop for (attribute value) on (cdr tag) by #'cddr
-				    do ;; (write-char #\space .xml-stream.)
-				      ;;  (when *print-pretty* (pprint-newline :linear stream))
-				      (write-xml-attribute .xml-stream. attribute value)))
+				    do (write-xml-attribute .xml-stream. attribute value)))
 			      body-continuation)
 	    (pprint-element (stringify tag) nil body-continuation)))))))
 
