@@ -299,31 +299,32 @@
     `(xml-write ,(read stream))))
 
 (defun write-xml-attribute (stream attribute value)
-  (write-char #\space stream)
-  (when *print-pretty* (pprint-newline :fill stream))
-  (pprint-logical-block (stream nil)
-    (pprint-indent :block 2 stream)	; parameterize?
-    (princ attribute stream)
-    (pprint-newline :fill stream)
-    (write-char #\= stream)
-    (pprint-newline :fill stream)
-    (let ((val (if (stringp value)
-		   value
-		 (princ-to-string value))))
-      ;; Now find and eliminate any appearances the three forbidden attval characters: &lt;
-      ;; &amp; &quot;.  This could be both smarter and faster, but perhaps not both.  A
-      ;; smarter version would be clever about choosing between &quot; or &apos;.  But this
-      ;; would require traversing the string an extra time, or doing more bookkeeping.  It
-      ;; might also be a lot more efficient to accumulate a string and then print it once,
-      ;; avoiding individual writes to the stream.
-      (loop for c across val
-	  initially (write-char #\" stream)
-	  do (case c
-	       (#\< (write-string "&lt;" stream))
-	       (#\& (write-string "&amp;" stream))
-	       (#\" (write-string "&quot;" stream))
-	       (t (write-char c stream)))
-	  finally (write-char #\" stream)))))
+  (when value				;mt: if value is nil, do nothing
+    (write-char #\space stream)
+    (when *print-pretty* (pprint-newline :fill stream))
+    (pprint-logical-block (stream nil)
+      (pprint-indent :block 2 stream)	; parameterize?
+      (princ attribute stream)
+      (pprint-newline :fill stream)
+      (write-char #\= stream)
+      (pprint-newline :fill stream)
+      (let ((val (if (stringp value)
+		     value
+		     (princ-to-string value))))
+	;; Now find and eliminate any appearances the three forbidden attval characters: &lt;
+	;; &amp; &quot;.  This could be both smarter and faster, but perhaps not both.  A
+	;; smarter version would be clever about choosing between &quot; or &apos;.  But this
+	;; would require traversing the string an extra time, or doing more bookkeeping.  It
+	;; might also be a lot more efficient to accumulate a string and then print it once,
+	;; avoiding individual writes to the stream.
+	(loop for c across val
+	   initially (write-char #\" stream)
+	   do (case c
+		(#\< (write-string "&lt;" stream))
+		(#\& (write-string "&amp;" stream))
+		(#\" (write-string "&quot;" stream))
+		(t (write-char c stream)))
+	   finally (write-char #\" stream))))))
 
 ;; This will someday usually be bypassed by the pprint-element compiler macro, but that isn't yet completely
 ;; implemented.
