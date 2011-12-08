@@ -2,7 +2,7 @@
 ;;
 ;; generalized pretty-printing xml generator
 
-;; This software is Copyright (c) Franz Inc, 2009
+;; This software is Copyright (c) Franz Inc, 2009, 2010, 2011
 ;; Franz Inc grants you the rights to distribute
 ;; and use this software as governed by the terms
 ;; of the Lisp Lesser GNU Public License
@@ -19,16 +19,16 @@
 ;;; This single file implements the :net-xml-generator module.
 ;;;
 
-;; This module is mostly a readtable hack provides the a palatable syntax for XML generation by Lisp code.  In
-;; order for Lisp and XML forms to coexist and nest arbitrarily, there must be some kind of syntactic marker
-;; to differentiate Lisp and XML operators/tagnames.  The #\^ reader macro marks XML tagnames in source code.
-;; Both Lisp source code and XML are trees.  Using this module the logical structure of application code that
-;; generates XML maps simply and clearly onto the structure of the generted XML, except that the entire
-;; vocabulary of Lisp forms (iteration, conditionals, case, and function calls) can be freely mixed with XML
-;; generation.  The earlier, unrelated htmlgen module used keyword symbols to denote the fixed set of html
-;; tags.  But this technique does not allow arbitrary nesting of html constructs inside Lisp syntactic
+;; This module is mostly a readtable hack that provides a palatable syntax for XML generation by Lisp code.
+;; In order for Lisp and XML forms to coexist and nest arbitrarily, there must be some kind of syntactic
+;; marker to differentiate Lisp and XML operators/tagnames.  The #\^ reader macro marks XML tagnames in source
+;; code.  Both Lisp source code and XML are trees.  Using this module the logical structure of application
+;; code that generates XML maps simply and clearly onto the structure of the generated XML, except that the
+;; entire vocabulary of Lisp forms (iteration, conditionals, case, and function calls) can be freely mixed
+;; with XML generation.  The earlier, unrelated htmlgen module used keyword symbols to denote the fixed set of
+;; html tags.  But this technique does not allow arbitrary nesting of html constructs inside Lisp syntactic
 ;; constructs, and required adding additional operators to support Lisp conditions, etc.  The reader macro
-;; approach allows much cleaner, terser, and simpler code.
+;; approach allows much cleaner, terser, and Lisp-idoimatic code.
 
 ;; In Allegro CL the named-readtable facility makes it easy to associate customized readtables for particular
 ;; files.  Place a top-level form like
@@ -77,14 +77,14 @@
 ;; Any other form prefixed with the #\@ read macro is executed normally and then the result is printed to the
 ;; generated XML as if by princ.
 
-;; The generated XML-generation code uses the pretty printer.  This may seem strange since pretty whitespace
-;; is not only useless in XML source, it also both slows the generation speed and increases the length of the
-;; generated XML.  However, pretty printed XML with proper indenting can greatly enhance human readability
-;; during debugging.  Once an application goes into production the pretty printer can be turned off by binding
-;; *print-pretty* nil, although some slight runtime cost still remains in the printer functions.  Someday we
-;; may provide a read-time switch that generates XML-writing code without testing for *print-pretty* at all
-;; and therefore completely avoids any residual overhead of the pretty printing capability, but so far this
-;; residue appears quite small and probably not worth addressing.
+;; The generated XML-generation code uses the CL pretty printer.  This may seem strange since pretty
+;; whitespace is not only useless in XML source, it also both slows the generation speed and increases the
+;; length of the generated XML.  However, pretty printed XML with proper indenting can greatly enhance human
+;; readability during debugging.  Once an application goes into production the pretty printer can be turned
+;; off by binding *print-pretty* nil, although some slight runtime cost still remains in the printer
+;; functions.  Someday we may provide a read-time switch that generates XML-writing code without testing for
+;; *print-pretty* at all and therefore completely avoids any residual overhead of the pretty printing
+;; capability, but so far this residue appears quite small and probably not worth addressing.
 
 ;; All use of these xml generation reader macros must appear lexically inside a with-xml-generation macro
 ;; form.  One important thing this macro does is to bind the variable .xml-stream. to the output stream.  This
@@ -127,9 +127,17 @@
 ;;; The implementation code begins here.
 ;;;
 
-(defparameter *net-xml-generator-version* "1.0.1")
+(defparameter *net-xml-generator-version* "1.0.2")
 
 ;;; Change history
+;;;
+;;; *** Version 1.0.2
+;;;
+;;; If an element attibute value is nil, skip generating that attribute value pair.
+;;;
+;;; Escape any #\> in xml-write, in an attribute value, in a value after an #\@ in element content, and in a
+;;; string at top level in element content.  All this is to obey the restriction that the #\> _must_ be
+;;; escaped anywhere it appears in an XML document other than as the close marker of a CDATA section.
 ;;;
 ;;; *** Version 1.0.1
 ;;;
@@ -299,6 +307,8 @@
     `(xml-write ,(read stream))))
 
 (defun write-xml-attribute (stream attribute value)
+  (unless value				; If attribute value is literally nil, suppress the pair.
+    (return-from write-xml-attribute nil))
   (write-char #\space stream)
   (when *print-pretty* (pprint-newline :fill stream))
   (pprint-logical-block (stream nil)
@@ -322,6 +332,7 @@
 	       (#\< (write-string "&lt;" stream))
 	       (#\& (write-string "&amp;" stream))
 	       (#\" (write-string "&quot;" stream))
+	       (#\> (write-string "&gt;" stream)) ; Also encode #\> to prevent appearance of "]]>".
 	       (t (write-char c stream)))
 	  finally (write-char #\" stream)))))
 
@@ -331,8 +342,10 @@
   (if (and *allow-xml-generator-optimization*
 	   (constantp attribute e)
 	   (constantp value e))
-      `(write-string-xx ,(with-output-to-string (s) (write-xml-attribute s attribute value))
-		     ,stream)
+      (if  #+excl (excl::constant-value value e) #-excl t ; If attribute value is literally nil, suppress the pair.
+	   `(write-string-xx ,(with-output-to-string (s) (write-xml-attribute s attribute value))
+			     ,stream)
+	   `(progn ,attribute ,value))
     whole))
 
 #+unused
@@ -353,6 +366,7 @@
 	     (#\< (write-string "&lt;" stream))
 	     (#\& (write-string "&amp;" stream))
 	     (#\" (write-string "&quot;" stream))
+	     (#\> (write-string "&gt;" stream))
 	     (t (write-char c stream)))
 	finally (write-char #\" stream))))
 
@@ -372,6 +386,7 @@
 	do (case c
 	     (#\< (write-string "&lt;" stream))
 	     (#\& (write-string "&amp;" stream))
+	     (#\> (write-string "&gt;" stream))
 	     (t (write-char c stream))))))
 
 ;; This macro is equivalent to xml-write, except that the pretty printer recognizes it and
@@ -570,6 +585,11 @@ emits:
 	 (let ((*print-pretty* nil)) ,@body)))))
 
 (defmacro cdata (&body body)
+  ;; The code body can write any literal data it likes to .xml-stream. except the character sequence "]]>".
+  ;; This sequence cannot be contained in a CDATA section.  The current XML Recommendation requires that if
+  ;; this sequence appears anywhere else in a document (i.e. other than as the close of a CDATA section) the
+  ;; #\> character must be encoded as a character entity, e.g. "]]&gt;".  Some carefularsers will signal error
+  ;; if this is violated.
   `(progn (write-string "<![CDATA[" .xml-stream.)
 	  (progn ,@body)
 	  (write-string "]]>" .xml-stream.)))
