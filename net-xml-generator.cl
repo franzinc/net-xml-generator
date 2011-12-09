@@ -1,7 +1,13 @@
 ;; -*- mode: common-lisp; package: net.xml.generator -*-
+
+#+(version= 8 2)
+(sys:defpatch "net-xml-generator" 1
+  "v1: version 1.0.2."
+  :type :system
+  :post-loadable t)
+
 ;;
 ;; generalized pretty-printing xml generator
-
 ;; This software is Copyright (c) Franz Inc, 2009, 2010, 2011
 ;; Franz Inc grants you the rights to distribute
 ;; and use this software as governed by the terms
