@@ -29,7 +29,7 @@ ifeq ($(OS_NAME),windows)
 endif
 
 clean: FORCE
-	rm -f *.fasl
+	rm -f *.fasl *.tmp
 
 install: FORCE
 ifndef DESTDIR
