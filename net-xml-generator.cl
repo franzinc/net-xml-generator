@@ -657,6 +657,8 @@ emits:
 ;; printed forms are reread.  This is no different than what is done for backquote, except
 ;; that backquote is defined in the standard readtable.
 
+#+:CCL (unless *print-pprint-dispatch* (setq *print-pprint-dispatch* ccl::*ipd*))
+
 (progn
   (set-pprint-dispatch '(cons (member pprint-element))        #'print-pprint-element)
   (set-pprint-dispatch '(cons (member xml-write xml-write-1)) #'print-xml-write)
@@ -675,8 +677,11 @@ emits:
   rt)
 
 (defparameter *xml-readtable*
-    (let ((rt (or (excl:named-readtable :xml nil)
-		  (setf (excl:named-readtable :xml) (copy-readtable)))))
+    (let ((rt #+ALLEGRO
+	    (or (excl:named-readtable :xml nil)
+		(setf (excl:named-readtable :xml) (copy-readtable)))
+	    #-ALLEGRO
+	    (copy-readtable)))
       (set-xml-generator-macro-chars #\^ #\@ rt)
       rt))
 
