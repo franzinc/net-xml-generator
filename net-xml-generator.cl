@@ -584,10 +584,16 @@ emits:
 ;; approximately the right thing (accepting some invalid characters) but should be replaced with a serious
 ;; XML-compliant definition.
 
+#+ALLEGRO
 (defun xml-namechar-p (char)
   (and char				; Handle eof elegantly.
        (eql (get-macro-character char)
 	    (load-time-value (get-macro-character #\A)))))
+
+#+CCL
+(defun xml-namechar-p (char)
+  (and char				; Handle eof elegantly.
+       (eql ccl::$cht_cnst (ccl::%character-attribute char (ccl::rdtab.ttab *readtable*)))))
 
 (defun write-xmldecl (stream &optional version)
   (format stream "<?xml~@[ version=\"~a\"~]?>~%" version))
