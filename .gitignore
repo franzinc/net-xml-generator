@@ -1,2 +1,5 @@
 build.out
 build.tmp
+xml-generator-blurb-copy.html
+*.fasl
+*~

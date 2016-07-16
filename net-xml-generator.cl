@@ -1,5 +1,11 @@
 ;; -*- mode: common-lisp; package: net.xml.generator -*-
 
+#+(version= 10 0)
+(sys:defpatch "net-xml-generator" 1
+  "v1: version 1.1.1."
+  :type :system
+  :post-loadable t)
+
 #+(version= 8 2)
 (sys:defpatch "net-xml-generator" 1
   "v1: version 1.0.2."
@@ -71,17 +77,22 @@
 
 ;; The #\@ read macro inside an element start consumes exactly two successive subforms.  The first is the
 ;; attribute name and the second is the attribute value.  A comma preceding the attribute name causes the name
-;; form to be evaluated.
+;; form to be evaluated.  If the #\@ is doubled, the attribute value is printed without the usual double
+;; quotes.  This appears to e necessary sometimes in a Javascript <script> element.
 
 ;; Elsewhere, outside an element start tag but as element content, the #\@ read macro causes the following
 ;; form to be evaluated and the result written to the XML output stream along with any necessary escaping.
 ;; Other forms are simple evaluated, but may contain appearances of the #\^ and #\@ macros to generate
-;; respectively nested elements or element content.
+;; respectively nested elements or element content.  If the #]@ is doubled, then the printer does not dp the
+;; usual XML character escaping.  This allows an application to emit preformatted XML, e.g. @@"foo&nbsp;bar"
+;; would be emitted without the printer escaping the& character.
 
 ;; As a syntatic convenience, a literal string at the top level of element content is treated as if prefaced
 ;; by the #\@ read macro.  Thus ^(foo @"bar") and ^(foo "bar") and ^(foo @'bar) all generate the same thing.
 ;; Any other form prefixed with the #\@ read macro is executed normally and then the result is printed to the
 ;; generated XML as if by princ.
+
+;; More code examples and rendered xhtml output are in the accompanying xml-generator-blurb.cl file.
 
 ;; The generated XML-generation code uses the CL pretty printer.  This may seem strange since pretty
 ;; whitespace is not only useless in XML source, it also both slows the generation speed and increases the
@@ -118,8 +129,6 @@
 ;;; To do:
 ;;;
 
-;; What about DTD generation?  Integrate with the parser.
-
 ;; Implement namespace support.
 
 ;; This code can easily generate illegal XML if (for instance) illegal characters appear in Lisp symbols used
@@ -129,17 +138,36 @@
 ;; development.  Could also verify against a DTD at generation time, preventing user code from generating
 ;; invalid XML.
 
+;; It would be nice to have more powerful integration with css syntax since the XML generator is often used to
+;; generate XHTML.
+
+;; it would be even nicer to have leverage over JavaScript syntax, since JavaScript is is dissimilar from
+;; Lisp, but is block structured and readability would benefit from pretty printing.  The CL pretty printer is
+;; clearly capable of formatting idiomatic JavaScript.
+
 ;;;
 ;;; The implementation code begins here.
 ;;;
 
-(defparameter *net-xml-generator-version* "1.0.2")
+(defparameter *net-xml-generator-version* "1.1.1")
 
 ;;; Change history
 ;;;
+;;; *** Version 1.1.1
+;;;
+;;; If a `@' reader macro in attribute context is doubled as `@@' the value form is printed without "quotes".
+;;; This is useful in Javascript, e.g.  ^((body @@onload "init()")) => <body onload=init()>P
+;;;
+;;; *** Version 1.1.0
+;;;
+;;; If a `@' reader macro in element context is doubled as `@@', the following object is printed to the XML
+;;; stream with no escaping.  This allows preformatted XML to be emitted.
+;;;
+;;; Some attempt at making the code portable to all conforming Common Lisp implementations.
+;;;
 ;;; *** Version 1.0.2
 ;;;
-;;; If an element attibute value is nil, skip generating that attribute value pair.
+;;; If an element attibute value is nil, omit generating that attribute value pair.
 ;;;
 ;;; Escape any #\> in xml-write, in an attribute value, in a value after an #\@ in element content, and in a
 ;;; string at top level in element content.  All this is to obey the restriction that the #\> _must_ be
@@ -155,6 +183,7 @@
 
 
 (defpackage :net.xml.generator
+  (:use :common-lisp)
   (:export :with-xml-generation :xml-write :emit-lxml-as-xml :*xml-readtable* :.xml-stream.
 	   :set-xml-generator-macro-chars
 	   :*netscape4-empty-element-compatibility*
@@ -169,7 +198,7 @@
 ;; Netscape 4 doesn't understand XML empty-element tag syntax such as <br/>.  In XML this is entirely
 ;; equivalent to <br></br>.  Setting this variable true causes this slightly-more-verbose form to be used
 ;; instead.  Netscape4 and other ancient browsers have become extinct, but any applications that need to
-;; generate xhtml for consumption by these dinosaurs want to bind variable this true.
+;; generate xhtml for consumption by these dinosaurs want to bind this variable true.
 
 (defparameter *netscape4-empty-element-compatibility* nil) ; changed from t 2009-09-25
 
@@ -227,7 +256,8 @@
 
   )					; eval-when
 
-(defvar .xml-stream.)
+(defvar .xml-stream.)			; Leave globally unbound so any attempt to emit xml outside the
+					; dynamic extent of a with-xml-generation macro will signal error.
 
 ;; This macro returns nil.
 (defmacro with-xml-generation ((stream-var &key) &body body)
@@ -302,17 +332,20 @@
     ))
 
 (defun xml-at (stream char)
-  (declare (ignore char))
-  (if *attribute-context*
-      (let* ((evalp (eql (peek-char t stream) #\,))
-	     (name (if evalp
-		       (progn (read-char stream) (read stream))
-		     (read-xml-tag stream)))
-	     (val (read stream)))
-	`(write-xml-attribute .xml-stream. ,name ,val))
-    `(xml-write ,(read stream))))
+  (let ((doublep (eql (peek-char t stream) char)))
+    (when doublep (read-char stream))
+    (if *attribute-context*
+	(let* ((evalp (eql (peek-char t stream) #\,))
+	       (name (if evalp
+			 (progn (read-char stream) (read stream))
+		       (read-xml-tag stream)))
+	       (val (read stream)))
+	  `(write-xml-attribute .xml-stream. ,name ,val ,doublep))
+      (if doublep
+	  `(xml-princ ,(read stream))
+	`(xml-write ,(read stream))))))
 
-(defun write-xml-attribute (stream attribute value)
+(defun write-xml-attribute (stream attribute value &optional doublep)
   (unless value				; If attribute value is literally nil, suppress the pair.
     (return-from write-xml-attribute nil))
   (write-char #\space stream)
@@ -326,30 +359,33 @@
     (let ((val (if (stringp value)
 		   value
 		 (princ-to-string value))))
-      ;; Now find and eliminate any appearances the three forbidden attval characters: &lt;
-      ;; &amp; &quot;.  This could be both smarter and faster, but perhaps not both.  A
-      ;; smarter version would be clever about choosing between &quot; or &apos;.  But this
-      ;; would require traversing the string an extra time, or doing more bookkeeping.  It
-      ;; might also be a lot more efficient to accumulate a string and then print it once,
-      ;; avoiding individual writes to the stream.
-      (loop for c across val
-	  initially (write-char #\" stream)
-	  do (case c
-	       (#\< (write-string "&lt;" stream))
-	       (#\& (write-string "&amp;" stream))
-	       (#\" (write-string "&quot;" stream))
-	       (#\> (write-string "&gt;" stream)) ; Also encode #\> to prevent appearance of "]]>".
-	       (t (write-char c stream)))
-	  finally (write-char #\" stream)))))
+      (if doublep
+	  ;; If double @@, don't write as string.
+	  (write-string val stream)
+	;; Now find and eliminate any appearances the three forbidden attval characters: &lt;
+	;; &amp; &quot;.  This could be both smarter and faster, but perhaps not both.  A
+	;; smarter version would be clever about choosing between &quot; or &apos;.  But this
+	;; would require traversing the string an extra time, or doing more bookkeeping.  It
+	;; might also be a lot more efficient to accumulate a string and then print it once,
+	;; avoiding individual writes to the stream.
+	(loop for c across val
+	    initially (write-char #\" stream)
+	    do (case c
+		 (#\< (write-string "&lt;" stream))
+		 (#\& (write-string "&amp;" stream))
+		 (#\" (write-string "&quot;" stream))
+		 (#\> (write-string "&gt;" stream)) ; Also encode #\> to prevent appearance of "]]>".
+		 (t (write-char c stream)))
+	    finally (write-char #\" stream))))))
 
 ;; This will someday usually be bypassed by the pprint-element compiler macro, but that isn't yet completely
 ;; implemented.
-(define-compiler-macro write-xml-attribute (&whole whole stream attribute value &environment e)
+(define-compiler-macro write-xml-attribute (&whole whole stream attribute value &optional doublep &environment e)
   (if (and *allow-xml-generator-optimization*
 	   (constantp attribute e)
 	   (constantp value e))
       (if  #+excl (excl::constant-value value e) #-excl t ; If attribute value is literally nil, suppress the pair.
-	   `(write-string-xx ,(with-output-to-string (s) (write-xml-attribute s attribute value))
+	   `(write-string-xx ,(with-output-to-string (s) (write-xml-attribute s attribute value doublep))
 			     ,stream)
 	   `(progn ,attribute ,value))
     whole))
@@ -400,6 +436,9 @@
 (defmacro xml-write-1 (form)
   `(progn (pprint-newline :fill .xml-stream.)
 	  (xml-write ,form)))
+
+(defun xml-princ (x)
+  (princ x .xml-stream.))
 
 #+unused
 (define-compiler-macro cformat (&whole whole stream control &rest args &environment e)
@@ -521,7 +560,7 @@
   (values))
 
 ;;;
-;;; <pre> and other elements woth significant whitespace
+;;; <pre> and other elements with whitespace that is significant
 ;;;
 
 ;; Support for elements where whitespace is significant, e.g. HTML <pre>.  The pre Lisp macro forces alignment
@@ -609,17 +648,39 @@ emits:
 ;; approximately the right thing (accepting some invalid characters) but should be replaced with a serious
 ;; XML-compliant definition.
 
+#+nomore				; Rather Allegro specific, and inexact.
 (defun xml-namechar-p (char)
   (and char				; Handle eof elegantly.
        (eql (get-macro-character char)
 	    (load-time-value (get-macro-character #\A)))))
 
+(defun xml-namechar-p (char)
+  (and char				; Handle eof elegantly.
+       (eql 1 (sbit (load-time-value
+		     (let ((a (make-array #x10000 :element-type 'bit :initial-element 0)))
+		       (flet ((code (c) (if (integerp c) c (char-code c))))
+			 (loop for x
+			     in '(
+				  #\: (#\A #\Z) #\_  (#\a #\z)
+				  (#xC0 #xD6) (#xD8 #xF6) (#xF8 #x2FF) (#x370 #x37D) (#x37F #x1FFF)
+				  (#x200C #x200D) (#x2070 #x218F) (#x2C00 #x2FEF) (#x3001 #xD7FF)
+				  (#xF900 #xFDCF) (#xFDF0 #xFFFD) #+never (#x10000 #xEFFFF)
+				  #\- #\. (#\0 #\9) #xB7 (#x0300 #x036F) (#x203F #x2040)
+				  )
+			     if (consp x)
+			     do
+			       (loop with (start end) = x
+				   for code from (code start) upto (code end)
+				   do (setf (bit a code) 1))
+			     else do (setf (bit a (code x)) 1)))
+		       a))
+		    (char-code char)))))
+
 (defun write-xmldecl (stream &optional version)
   (format stream "<?xml~@[ version=\"~a\"~]?>~%" version))
 
 ;; <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-;;  ExternalID     ::=          'SYSTEM' S  SystemLiteral
-;;                              | 'PUBLIC' S PubidLiteral S SystemLiteral
+;; ExternalID ::= 'SYSTEM' S  SystemLiteral | 'PUBLIC' S PubidLiteral S SystemLiteral
 
 (defun write-doctype (stream name system-literal &optional public-literal)
   ;; Note that system-literal and public-literal appear in reverse order than in the doctype statement.
@@ -666,10 +727,12 @@ emits:
 
 (defun print-write-xml-attribute (stream form)
   ;; Must bulletproof all this destructuring!!!
-  (destructuring-bind (op stm attribute-form value-form)
+  (destructuring-bind (op stm attribute-form value-form &optional doubled)
       form
     (declare (ignore op stm))
-    (format stream "~@<@~a~2I ~_~w~:>" attribute-form value-form)))
+    (if doubled
+	(format stream "~@<@@~a~2I ~_~w~:>" attribute-form value-form)
+      (format stream "~@<@~a~2I ~_~w~:>" attribute-form value-form))))
 
 (defun print-xml-write (stream form)
   ;; Must bulletproof all this destructuring!!!
@@ -678,6 +741,11 @@ emits:
     (unless (eql op 'xml-write-1) (write-char #\@ stream))
     (write arg :stream stream)))
 
+(defun print-xml-princ (stream form)
+  ;; Must bulletproof all this destructuring!!!
+  (write-string "@@" stream)
+  (write (cadr form) :stream stream))
+
 ;; These pprint-dispatch entries assume that the :xml readtable will be in effect if the
 ;; printed forms are reread.  This is no different than what is done for backquote, except
 ;; that backquote is defined in the standard readtable.
@@ -685,6 +753,7 @@ emits:
 (progn
   (set-pprint-dispatch '(cons (member pprint-element))        #'print-pprint-element)
   (set-pprint-dispatch '(cons (member xml-write xml-write-1)) #'print-xml-write)
+  (set-pprint-dispatch '(cons (member xml-princ            )) #'print-xml-princ)
   (set-pprint-dispatch '(cons (member write-xml-attribute))   #'print-write-xml-attribute)
   )
 
@@ -700,8 +769,10 @@ emits:
   rt)
 
 (defparameter *xml-readtable*
-    (let ((rt (or (excl:named-readtable :xml nil)
-		  (setf (excl:named-readtable :xml) (copy-readtable)))))
+    (let ((rt #+allegro
+	      (or (excl:named-readtable :xml nil)
+		  (setf (excl:named-readtable :xml) (copy-readtable)))
+	      #-allegro  (copy-readtable)))
       (set-xml-generator-macro-chars #\^ #\@ rt)
       rt))
 

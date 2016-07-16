@@ -73,6 +73,8 @@ generate XHTML, so we'll also show the rendered example:" )
 	    (let ((examples
 		   '(
 		     ^(p "Hello, world!")
+		     ^(p @"Hello, world!")
+		     ^(p @@"Hello,&nbsp;world!")
 		     ^((p @id 42) "Hello, world!")
 		     ^(center "Above the line." ^hr "Below the line.")
 		     ^((table @rules "all" @frame "box")

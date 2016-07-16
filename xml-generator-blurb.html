@@ -50,19 +50,31 @@ generate XHTML, so we'll also show the rendered example:
     </p>
 <pre class="example">
 ^(p "Hello, world!")</pre>
-<pre class="result">&lt;p>Hello, world!&lt;/p></pre>
+<pre class="result">&lt;p&gt;Hello, world!&lt;/p&gt;</pre>
     <div class="rendered">
       <p>Hello, world!</p>
     </div>
 <pre class="example">
+^(p @"Hello, world!")</pre>
+<pre class="result">&lt;p&gt;Hello, world!&lt;/p&gt;</pre>
+    <div class="rendered">
+      <p>Hello, world!</p>
+    </div>
+<pre class="example">
+^(p @@"Hello,&amp;nbsp;world!")</pre>
+<pre class="result">&lt;p&gt;Hello,&amp;nbsp;world!&lt;/p&gt;</pre>
+    <div class="rendered">
+      <p>Hello,&nbsp;world!</p>
+    </div>
+<pre class="example">
 ^((p @id 42) "Hello, world!")</pre>
-<pre class="result">&lt;p id="42">Hello, world!&lt;/p></pre>
+<pre class="result">&lt;p id="42"&gt;Hello, world!&lt;/p&gt;</pre>
     <div class="rendered">
       <p id="42">Hello, world!</p>
     </div>
 <pre class="example">
 ^(center "Above the line." ^hr "Below the line.")</pre>
-<pre class="result">&lt;center>Above the line.&lt;hr/>Below the line.&lt;/center></pre>
+<pre class="result">&lt;center&gt;Above the line.&lt;hr/&gt;Below the line.&lt;/center&gt;</pre>
     <div class="rendered">
       <center>Above the line.<hr/>Below the line.</center>
     </div>
@@ -72,11 +84,11 @@ generate XHTML, so we'll also show the rendered example:
   ^(tr ^(td "Joe") ^(td @"555-1234"))
   ^(tr ^(td "Xavier") ^(td @"555-5678")))</pre>
 <pre class="result">
-&lt;table rules="all" frame="box">
-  &lt;tr bgcolor="Silver">&lt;th>Name&lt;/th>&lt;th>Phone&lt;/th>&lt;/tr>
-  &lt;tr>&lt;td>Joe&lt;/td>&lt;td>555-1234&lt;/td>&lt;/tr>
-  &lt;tr>&lt;td>Xavier&lt;/td>&lt;td>555-5678&lt;/td>&lt;/tr>
-&lt;/table></pre>
+&lt;table rules="all" frame="box"&gt;
+  &lt;tr bgcolor="Silver"&gt;&lt;th&gt;Name&lt;/th&gt;&lt;th&gt;Phone&lt;/th&gt;&lt;/tr&gt;
+  &lt;tr&gt;&lt;td&gt;Joe&lt;/td&gt;&lt;td&gt;555-1234&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr&gt;&lt;td&gt;Xavier&lt;/td&gt;&lt;td&gt;555-5678&lt;/td&gt;&lt;/tr&gt;
+&lt;/table&gt;</pre>
     <div class="rendered">
       <table rules="all" frame="box">
         <tr bgcolor="Silver"><th>Name</th><th>Phone</th></tr>
@@ -93,37 +105,37 @@ generate XHTML, so we'll also show the rendered example:
         ^(td @(symbol-name op))
         ^(td @(format nil "~{~a~^ ~}" (arglist op)))))))</pre>
 <pre class="result">
-&lt;table>
-  &lt;tr bgcolor="Silver">&lt;th>operator&lt;/th>&lt;th>arglist&lt;/th>&lt;/tr>
-  &lt;tr>&lt;td>emit-lxml-as-xml&lt;/td>&lt;td>.xml-stream. lxml&lt;/td>&lt;/tr>
-  &lt;tr>&lt;td>pre&lt;/td>&lt;td>&amp;amp;body body&lt;/td>&lt;/tr>
-  &lt;tr>&lt;td>xml-write&lt;/td>&lt;td>value&lt;/td>&lt;/tr>
-  &lt;tr>&lt;td>write-xmldecl&lt;/td>&lt;td>stream &amp;amp;optional version&lt;/td>&lt;/tr>
-  &lt;tr>
-    &lt;td>set-xml-generator-macro-chars&lt;/td>
-    &lt;td>element-char attribute-char &amp;amp;optional rt&lt;/td>
-  &lt;/tr>
-  &lt;tr>
-    &lt;td>with-xml-generation&lt;/td>
-    &lt;td>(stream-var &amp;amp;key) &amp;amp;body body&lt;/td>
-  &lt;/tr>
-  &lt;tr>
-    &lt;td>write-doctype&lt;/td>
-    &lt;td>stream name system-literal &amp;amp;optional public-literal&lt;/td>
-  &lt;/tr>
-  &lt;tr>&lt;td>cdata&lt;/td>&lt;td>&amp;amp;body body&lt;/td>&lt;/tr>
-&lt;/table></pre>
+&lt;table&gt;
+  &lt;tr bgcolor="Silver"&gt;&lt;th&gt;operator&lt;/th&gt;&lt;th&gt;arglist&lt;/th&gt;&lt;/tr&gt;
+  &lt;tr&gt;
+    &lt;td&gt;set-xml-generator-macro-chars&lt;/td&gt;
+    &lt;td&gt;element-char attribute-char &amp;amp;optional rt&lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;&lt;td&gt;emit-lxml-as-xml&lt;/td&gt;&lt;td&gt;.xml-stream. lxml&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr&gt;&lt;td&gt;xml-write&lt;/td&gt;&lt;td&gt;value&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr&gt;&lt;td&gt;write-xmldecl&lt;/td&gt;&lt;td&gt;stream &amp;amp;optional version&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr&gt;&lt;td&gt;pre&lt;/td&gt;&lt;td&gt;&amp;amp;body body&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr&gt;
+    &lt;td&gt;with-xml-generation&lt;/td&gt;
+    &lt;td&gt;(stream-var &amp;amp;key) &amp;amp;body body&lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+    &lt;td&gt;write-doctype&lt;/td&gt;
+    &lt;td&gt;stream name system-literal &amp;amp;optional public-literal&lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;&lt;td&gt;cdata&lt;/td&gt;&lt;td&gt;&amp;amp;body body&lt;/td&gt;&lt;/tr&gt;
+&lt;/table&gt;</pre>
     <div class="rendered">
       <table>
         <tr bgcolor="Silver"><th>operator</th><th>arglist</th></tr>
-        <tr><td>emit-lxml-as-xml</td><td>.xml-stream. lxml</td></tr>
-        <tr><td>pre</td><td>&amp;body body</td></tr>
-        <tr><td>xml-write</td><td>value</td></tr>
-        <tr><td>write-xmldecl</td><td>stream &amp;optional version</td></tr>
         <tr>
           <td>set-xml-generator-macro-chars</td>
           <td>element-char attribute-char &amp;optional rt</td>
         </tr>
+        <tr><td>emit-lxml-as-xml</td><td>.xml-stream. lxml</td></tr>
+        <tr><td>xml-write</td><td>value</td></tr>
+        <tr><td>write-xmldecl</td><td>stream &amp;optional version</td></tr>
+        <tr><td>pre</td><td>&amp;body body</td></tr>
         <tr><td>with-xml-generation</td><td>(stream-var &amp;key) &amp;body body</td></tr>
         <tr>
           <td>write-doctype</td>
@@ -214,6 +226,8 @@ generate XHTML, so we'll also show the rendered example:" )
 	    (let ((examples
 		   '(
 		     ^(p "Hello, world!")
+		     ^(p @"Hello, world!")
+		     ^(p @@"Hello,&amp;nbsp;world!")
 		     ^((p @id 42) "Hello, world!")
 		     ^(center "Above the line." ^hr "Below the line.")
 		     ^((table @rules "all" @frame "box")
