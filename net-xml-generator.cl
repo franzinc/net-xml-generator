@@ -1,25 +1,7 @@
 ;; -*- mode: common-lisp; package: net.xml.generator -*-
-
-#+(version= 10 0)
-(sys:defpatch "net-xml-generator" 1
-  "v1: version 1.1.1."
-  :type :system
-  :post-loadable t)
-
-#+(version= 8 2)
-(sys:defpatch "net-xml-generator" 1
-  "v1: version 1.0.2."
-  :type :system
-  :post-loadable t)
-
+;; See the file LICENSE for the full license governing this code.
 ;;
 ;; generalized pretty-printing xml generator
-;; This software is Copyright (c) Franz Inc, 2009, 2010, 2011
-;; Franz Inc grants you the rights to distribute
-;; and use this software as governed by the terms
-;; of the Lisp Lesser GNU Public License
-;; (http://opensource.franz.com/preamble.html),
-;; known as the LLGPL.
 
 ;; There is no warranty provided by Franz Inc either explicitly or implicitly as to the correctness or
 ;; servicability of this code.  It is provided "as is" in the hope that it may be useful.  Comments and
@@ -148,6 +130,19 @@
 ;;;
 ;;; The implementation code begins here.
 ;;;
+
+#+(version= 10 0)
+(sys:defpatch "net-xml-generator" 1
+  "v1: version 1.1.1."
+  :type :system
+  :post-loadable t)
+
+#+(version= 8 2)
+(sys:defpatch "net-xml-generator" 1
+  "v1: version 1.0.2."
+  :type :system
+  :post-loadable t)
+
 
 (defparameter *net-xml-generator-version* "1.1.1")
 
