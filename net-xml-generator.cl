@@ -132,8 +132,9 @@
 ;;;
 
 #+(version= 10 0)
-(sys:defpatch "net-xml-generator" 1
-  "v1: version 1.1.1."
+(sys:defpatch "net-xml-generator" 2
+  "v2: version 1.1.2.
+v1: version 1.1.1."
   :type :system
   :post-loadable t)
 
@@ -143,10 +144,11 @@
   :type :system
   :post-loadable t)
 
-
-(defparameter *net-xml-generator-version* "1.1.1")
-
 ;;; Change history
+;;;
+;;; *** Version 1.1.2
+;;;
+;;; Moved *net-xml-generator-version* definition after in-package.
 ;;;
 ;;; *** Version 1.1.1
 ;;;
@@ -185,6 +187,8 @@
 	   :cdata :pre :write-xmldecl :write-doctype :*xml-line-break-style*))
 
 (in-package :net.xml.generator)
+
+(defparameter *net-xml-generator-version* "1.1.2")
 
 ;;;
 ;;; Some old browsers don't understand xhtml.
