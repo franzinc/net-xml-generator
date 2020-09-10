@@ -36,6 +36,7 @@ ifndef DESTDIR
 	@echo DESTDIR not defined
 	exit 1
 endif
-	cp -p net-xml-generator.fasl $(DESTDIR)/code
+#### do not use -p since it fails on z:/ on thunder
+	cp net-xml-generator.fasl $(DESTDIR)/code
 
 FORCE:
